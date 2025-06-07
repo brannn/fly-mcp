@@ -1,0 +1,43 @@
+# Fly.io configuration for fly-mcp server
+app = "fly-mcp-server"
+primary_region = "ord"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  FLY_MCP_ENVIRONMENT = "production"
+  FLY_MCP_LOGGING_LEVEL = "info"
+  FLY_MCP_LOGGING_FORMAT = "json"
+  FLY_MCP_SERVER_HOST = "0.0.0.0"
+  FLY_MCP_SERVER_PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  max_machines_running = 10
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+# Resource allocation
+[vm]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+
+# Secrets (set via fly secrets set)
+# FLY_API_TOKEN - Your Fly.io API token
+# FLY_ORG - Your Fly.io organization name

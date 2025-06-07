@@ -1,0 +1,53 @@
+# Production configuration for Fly.io deployment
+environment: production
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: 30
+  write_timeout: 30
+  idle_timeout: 120
+
+fly:
+  # Set via Fly.io secrets: FLY_API_TOKEN
+  api_token: ""
+  # Set via Fly.io secrets: FLY_ORG
+  organization: ""
+  base_url: "https://api.machines.dev"
+  timeout: 30
+
+mcp:
+  version: "2024-11-05"
+  server_info:
+    name: "fly-mcp"
+    version: "0.1.0"
+  capabilities:
+    tools:
+      list_changed: true
+    resources:
+      subscribe: false
+      list_changed: true
+    prompts:
+      list_changed: false
+
+security:
+  rate_limit_enabled: true
+  rate_limit_rps: 10
+  audit_log_enabled: true
+  allowed_origins:
+    - "*"  # Will be restricted based on deployment
+  permissions:
+    default:
+      - "fly:read"
+      - "fly:deploy"
+      - "fly:scale"
+      - "fly:restart"
+      - "fly:logs"
+      - "fly:secrets"
+      - "fly:volumes"
+
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  structured: true

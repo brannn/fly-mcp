@@ -1,0 +1,53 @@
+# Local development configuration
+environment: local
+
+server:
+  host: "127.0.0.1"
+  port: 8080
+  read_timeout: 30
+  write_timeout: 30
+  idle_timeout: 120
+
+fly:
+  # Set via environment variable: FLY_MCP_FLY_API_TOKEN
+  api_token: ""
+  # Set via environment variable: FLY_MCP_FLY_ORGANIZATION
+  organization: ""
+  base_url: "https://api.machines.dev"
+  timeout: 30
+
+mcp:
+  version: "2024-11-05"
+  server_info:
+    name: "fly-mcp"
+    version: "0.1.0-dev"
+  capabilities:
+    tools:
+      list_changed: true
+    resources:
+      subscribe: false
+      list_changed: true
+    prompts:
+      list_changed: false
+
+security:
+  rate_limit_enabled: false  # Disabled for local development
+  rate_limit_rps: 100
+  audit_log_enabled: true
+  allowed_origins:
+    - "http://localhost:*"
+    - "http://127.0.0.1:*"
+    - "vscode-webview://*"
+  permissions:
+    default:
+      - "fly:read"
+      - "fly:deploy"
+      - "fly:scale"
+      - "fly:restart"
+      - "fly:logs"
+
+logging:
+  level: "debug"
+  format: "text"  # More readable for local development
+  output: "stdout"
+  structured: false
