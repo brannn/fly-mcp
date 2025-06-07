@@ -12,9 +12,10 @@ import (
 
 // Client wraps the Fly.io API client with additional functionality
 type Client struct {
-	flyClient *fly.Client
-	logger    *logger.Logger
-	config    *config.FlyConfig
+	flyClient      *fly.Client
+	machinesClient *MachinesClient
+	logger         *logger.Logger
+	config         *config.FlyConfig
 }
 
 // NewClient creates a new Fly.io API client
@@ -31,10 +32,14 @@ func NewClient(cfg *config.FlyConfig, log *logger.Logger) (*Client, error) {
 		Version:     "0.1.0",
 	})
 
+	// Create Machines API client
+	machinesClient := NewMachinesClient(cfg, log)
+
 	client := &Client{
-		flyClient: flyClient,
-		logger:    log,
-		config:    cfg,
+		flyClient:      flyClient,
+		machinesClient: machinesClient,
+		logger:         log,
+		config:         cfg,
 	}
 
 	// Validate the client by checking authentication
@@ -144,55 +149,115 @@ func (c *Client) GetApp(ctx context.Context, appName string) (*App, error) {
 func (c *Client) GetAppStatus(ctx context.Context, appName string) (*AppStatus, error) {
 	start := time.Now()
 
+	// Get basic app info from GraphQL API
 	app, err := c.flyClient.GetAppCompact(ctx, appName)
-	duration := time.Since(start)
-
-	c.logger.LogFlyAPICall(fmt.Sprintf("/apps/%s", appName), "GET", getStatusCode(err), duration)
-
 	if err != nil {
+		duration := time.Since(start)
+		c.logger.LogFlyAPICall(fmt.Sprintf("/apps/%s", appName), "GET", getStatusCode(err), duration)
 		return nil, fmt.Errorf("failed to get app status for %s: %w", appName, err)
 	}
 
-	// For now, we'll create a basic status without machine details
-	// TODO: Implement machine API integration for detailed machine states
+	// Get machines from Machines API
+	machines, err := c.machinesClient.ListMachines(ctx, appName)
+
+	if err != nil {
+		c.logger.Warn().
+			Str("app_name", appName).
+			Err(err).
+			Msg("Failed to get machines, continuing with basic app status")
+
+		// Return basic status without machine details
+		return &AppStatus{
+			AppName:       appName,
+			Status:        app.Status,
+			Deployed:      app.Deployed,
+			MachineCount:  0,
+			MachineStates: make(map[string]int),
+			Hostname:      app.Hostname,
+			UpdatedAt:     time.Now(),
+		}, nil
+	}
+
+	// Count machine states
+	machineStates := make(map[string]int)
+	for _, machine := range machines {
+		machineStates[machine.State]++
+	}
+
 	status := &AppStatus{
 		AppName:       appName,
 		Status:        app.Status,
 		Deployed:      app.Deployed,
-		MachineCount:  0, // Will be updated when machine API is integrated
-		MachineStates: make(map[string]int),
+		MachineCount:  len(machines),
+		MachineStates: machineStates,
 		Hostname:      app.Hostname,
-		UpdatedAt:     time.Now(), // Use current time since UpdatedAt may not be available
+		UpdatedAt:     time.Now(),
 	}
 
 	c.logger.Debug().
 		Str("app_name", appName).
 		Str("status", app.Status).
-		Msg("Retrieved app status from Fly.io")
+		Int("machine_count", len(machines)).
+		Msg("Retrieved app status with machine details from Fly.io")
 
 	return status, nil
 }
 
-// RestartApp restarts an application
+// RestartApp restarts an application by restarting all its machines
 func (c *Client) RestartApp(ctx context.Context, appName string) error {
 	start := time.Now()
 
-	// For now, we'll return a placeholder implementation
-	// TODO: Implement actual restart functionality using the machines API
-	// This would typically involve:
-	// 1. Getting all machines for the app
-	// 2. Restarting each machine individually
-	// 3. Waiting for machines to come back online
+	// Get all machines for the app
+	machines, err := c.machinesClient.ListMachines(ctx, appName)
+	if err != nil {
+		duration := time.Since(start)
+		c.logger.LogFlyAPICall(fmt.Sprintf("/apps/%s/machines", appName), "GET", getStatusCode(err), duration)
+		return fmt.Errorf("failed to get machines for app %s: %w", appName, err)
+	}
+
+	if len(machines) == 0 {
+		return fmt.Errorf("no machines found for app %s", appName)
+	}
+
+	// Restart each machine
+	var restartErrors []string
+	successCount := 0
+
+	for _, machine := range machines {
+		if err := c.machinesClient.RestartMachine(ctx, appName, machine.ID); err != nil {
+			c.logger.Error().
+				Str("app_name", appName).
+				Str("machine_id", machine.ID).
+				Err(err).
+				Msg("Failed to restart machine")
+			restartErrors = append(restartErrors, fmt.Sprintf("machine %s: %v", machine.ID, err))
+		} else {
+			successCount++
+		}
+	}
 
 	duration := time.Since(start)
 	c.logger.LogFlyAPICall(fmt.Sprintf("/apps/%s/restart", appName), "POST", 200, duration)
 
+	if len(restartErrors) > 0 {
+		if successCount == 0 {
+			return fmt.Errorf("failed to restart any machines: %v", restartErrors)
+		}
+		c.logger.Warn().
+			Str("app_name", appName).
+			Int("success_count", successCount).
+			Int("error_count", len(restartErrors)).
+			Strs("errors", restartErrors).
+			Msg("Partial restart success")
+	}
+
 	c.logger.Info().
 		Str("app_name", appName).
-		Msg("Restart initiated for app (placeholder implementation)")
+		Int("machine_count", len(machines)).
+		Int("success_count", successCount).
+		Msg("Successfully restarted app")
 
-	// Return an error indicating this is not yet implemented
-	return fmt.Errorf("restart functionality not yet implemented - requires machines API integration")
+	return nil
 }
 
 // getStatusCode extracts HTTP status code from error or returns 200 for success

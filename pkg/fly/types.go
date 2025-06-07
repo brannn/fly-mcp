@@ -30,15 +30,15 @@ type AppStatus struct {
 	UpdatedAt     time.Time      `json:"updatedAt"`
 }
 
-// Machine represents a Fly.io machine
-type Machine struct {
+// MachineInfo represents basic machine information (use Machine from machines_client.go for full details)
+type MachineInfo struct {
 	ID       string            `json:"id"`
 	Name     string            `json:"name"`
 	State    string            `json:"state"`
 	Region   string            `json:"region"`
 	ImageRef string            `json:"imageRef"`
 	Config   *MachineConfig    `json:"config,omitempty"`
-	Events   []MachineEvent    `json:"events,omitempty"`
+	Events   []MachineEventInfo `json:"events,omitempty"`
 	Checks   []MachineCheck    `json:"checks,omitempty"`
 	CreatedAt time.Time        `json:"createdAt"`
 	UpdatedAt time.Time        `json:"updatedAt"`
@@ -82,8 +82,8 @@ type MachineGuest struct {
 	MemoryMB int    `json:"memoryMb"`
 }
 
-// MachineEvent represents a machine event
-type MachineEvent struct {
+// MachineEventInfo represents a machine event (use MachineEvent from machines_client.go for API responses)
+type MachineEventInfo struct {
 	ID        string                 `json:"id"`
 	Type      string                 `json:"type"`
 	Status    string                 `json:"status"`

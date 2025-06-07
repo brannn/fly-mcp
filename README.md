@@ -152,9 +152,47 @@ fly secrets set FLY_API_TOKEN=fo1_your_production_token
 fly secrets set FLY_ORG=your-production-org
 ```
 
+## 🛠️ Available MCP Tools
+
+### Core Tools
+
+| Tool | Description | Example Usage |
+|------|-------------|---------------|
+| `ping` | Test connectivity and server response | `{"name": "ping", "arguments": {"message": "Hello!"}}` |
+
+### Fly.io Management Tools
+
+| Tool | Description | Example Usage |
+|------|-------------|---------------|
+| `fly_list_apps` | List all applications with filtering | `{"name": "fly_list_apps", "arguments": {"status_filter": "running"}}` |
+| `fly_app_info` | Get detailed application information | `{"name": "fly_app_info", "arguments": {"app_name": "my-app"}}` |
+| `fly_status` | Real-time application and machine status | `{"name": "fly_status", "arguments": {"app_name": "my-app"}}` |
+| `fly_restart` | Restart applications with confirmation | `{"name": "fly_restart", "arguments": {"app_name": "my-app", "confirm": true}}` |
+| `fly_scale` | Scaling status and recommendations | `{"name": "fly_scale", "arguments": {"app_name": "my-app", "action": "status"}}` |
+
+### Tool Features
+
+- **🔒 Security**: All tools require proper authentication and permissions
+- **📝 Audit Logging**: All operations are logged for compliance and debugging
+- **⚡ Real-time**: Status and machine information is fetched in real-time
+- **🛡️ Safety**: Destructive operations require explicit confirmation
+- **📊 Rich Output**: Human-readable responses with actionable recommendations
+
 ## 🧪 Testing the MCP Server
 
-Once running, you can test the MCP server:
+### Automated Testing
+
+Use the provided test script to verify all tools:
+
+```bash
+# Start the server first
+make dev
+
+# In another terminal, run tests
+./scripts/test-mcp-tools.sh
+```
+
+### Manual Testing
 
 1. **Health Check**
    ```bash
@@ -177,7 +215,7 @@ Once running, you can test the MCP server:
      }'
    ```
 
-3. **List Tools**
+3. **List Available Tools**
    ```bash
    curl -X POST http://localhost:8080/mcp \
      -H "Content-Type: application/json" \
@@ -188,26 +226,68 @@ Once running, you can test the MCP server:
      }'
    ```
 
+4. **Test Ping Tool**
+   ```bash
+   curl -X POST http://localhost:8080/mcp \
+     -H "Content-Type: application/json" \
+     -d '{
+       "jsonrpc": "2.0",
+       "id": 3,
+       "method": "tools/call",
+       "params": {
+         "name": "ping",
+         "arguments": {"message": "Hello from fly-mcp!"}
+       }
+     }'
+   ```
+
+5. **Test Fly.io Tools** (requires valid credentials)
+   ```bash
+   curl -X POST http://localhost:8080/mcp \
+     -H "Content-Type: application/json" \
+     -d '{
+       "jsonrpc": "2.0",
+       "id": 4,
+       "method": "tools/call",
+       "params": {
+         "name": "fly_list_apps",
+         "arguments": {}
+       }
+     }'
+   ```
+
 ## 🎯 Current Status
 
-This is the initial foundation setup. Currently implemented:
+**Phase 2 Complete**: Fly.io API Integration & Core Tools
 
-- ✅ Project structure and build system
-- ✅ Configuration management (local/production)
-- ✅ HTTP server with middleware
-- ✅ Basic MCP protocol handler
-- ✅ Structured logging
-- ✅ Health checks and metrics endpoints
-- ✅ Simple ping tool for testing
+### ✅ Implemented Features
 
-### Coming Next
+- ✅ **Project structure and build system**
+- ✅ **Configuration management** (local/production environments)
+- ✅ **HTTP server** with middleware (CORS, rate limiting, logging)
+- ✅ **MCP protocol handler** with full request/response handling
+- ✅ **Structured logging** with audit trails and security events
+- ✅ **Fly.io API integration** (hybrid approach: fly-go + Machines API)
+- ✅ **Authentication & authorization** with permissions and audit logging
+- ✅ **Core MCP tools**:
+  - `ping` - Test tool for connectivity
+  - `fly_list_apps` - List all applications with filtering
+  - `fly_app_info` - Get detailed application information
+  - `fly_status` - Real-time application and machine status
+  - `fly_restart` - Restart applications with confirmation
+  - `fly_scale` - Scaling status and recommendations
+- ✅ **Health checks and metrics** endpoints
+- ✅ **Comprehensive error handling** and validation
+- ✅ **Security features** (rate limiting, CORS, audit logging)
 
-- 🔄 Fly.io API client integration
-- 🔄 Core Fly.io management tools (deploy, scale, logs, etc.)
-- 🔄 Authentication and security
-- 🔄 Comprehensive testing
-- 🔄 Docker containerization
-- 🔄 CI/CD pipeline
+### 🔄 Coming Next (Phase 3)
+
+- 🔄 **Additional tools**: logs, secrets, volumes, certificates
+- 🔄 **Deploy tool** for application deployment
+- 🔄 **Advanced scaling** with auto-scaling recommendations
+- 🔄 **Monitoring integration** with alerts and dashboards
+- 🔄 **CI/CD pipeline** and automated testing
+- 🔄 **Documentation** and usage examples
 
 ## 📝 License
 

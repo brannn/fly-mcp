@@ -208,6 +208,7 @@ func (h *Handler) registerTools() error {
 	h.tools["fly_app_info"] = tools.NewAppInfoTool(h.flyClient, h.authManager, h.logger)
 	h.tools["fly_status"] = tools.NewAppStatusTool(h.flyClient, h.authManager, h.logger)
 	h.tools["fly_restart"] = tools.NewAppRestartTool(h.flyClient, h.authManager, h.logger)
+	h.tools["fly_scale"] = tools.NewAppScaleTool(h.flyClient, h.authManager, h.logger)
 
 	h.logger.Info().
 		Int("total_tools", len(h.tools)).
