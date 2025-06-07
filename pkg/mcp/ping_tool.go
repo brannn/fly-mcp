@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/brannn/fly-mcp/internal/logger"
+	"github.com/brannn/fly-mcp/pkg/interfaces"
 )
 
 // PingTool is a simple tool for testing MCP functionality
@@ -39,7 +40,7 @@ func (t *PingTool) InputSchema() map[string]interface{} {
 }
 
 // Execute executes the ping tool
-func (t *PingTool) Execute(ctx context.Context, args map[string]interface{}) (*ToolResult, error) {
+func (t *PingTool) Execute(ctx context.Context, args map[string]interface{}) (*interfaces.ToolResult, error) {
 	// Extract message from arguments
 	message := "Hello from fly-mcp!"
 	if msg, ok := args["message"].(string); ok && msg != "" {
@@ -54,8 +55,8 @@ func (t *PingTool) Execute(ctx context.Context, args map[string]interface{}) (*T
 		Str("message", message).
 		Msg("Ping tool executed")
 	
-	return &ToolResult{
-		Content: []ContentBlock{
+	return &interfaces.ToolResult{
+		Content: []interfaces.ContentBlock{
 			{
 				Type: "text",
 				Text: response,

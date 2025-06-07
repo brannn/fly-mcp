@@ -7,29 +7,46 @@ import (
 	"time"
 
 	"github.com/brannn/fly-mcp/internal/logger"
+	"github.com/brannn/fly-mcp/pkg/auth"
 	"github.com/brannn/fly-mcp/pkg/config"
+	"github.com/brannn/fly-mcp/pkg/fly"
+	"github.com/brannn/fly-mcp/pkg/interfaces"
+	"github.com/brannn/fly-mcp/pkg/tools"
 )
 
 // Handler handles MCP protocol requests
 type Handler struct {
-	config *config.Config
-	logger *logger.Logger
-	tools  map[string]Tool
+	config      *config.Config
+	logger      *logger.Logger
+	tools       map[string]interfaces.Tool
+	flyClient   *fly.Client
+	authManager *auth.Manager
 }
 
 // NewHandler creates a new MCP handler
 func NewHandler(cfg *config.Config, log *logger.Logger) (*Handler, error) {
-	handler := &Handler{
-		config: cfg,
-		logger: log,
-		tools:  make(map[string]Tool),
+	// Create Fly.io client
+	flyClient, err := fly.NewClient(&cfg.Fly, log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Fly.io client: %w", err)
 	}
-	
+
+	// Create authentication manager
+	authManager := auth.NewManager(cfg, log)
+
+	handler := &Handler{
+		config:      cfg,
+		logger:      log,
+		tools:       make(map[string]interfaces.Tool),
+		flyClient:   flyClient,
+		authManager: authManager,
+	}
+
 	// Register tools
 	if err := handler.registerTools(); err != nil {
 		return nil, fmt.Errorf("failed to register tools: %w", err)
 	}
-	
+
 	return handler, nil
 }
 
@@ -181,14 +198,32 @@ func (h *Handler) handleResourcesRead(req *MCPRequest) (*MCPResponse, error) {
 
 // registerTools registers all available tools
 func (h *Handler) registerTools() error {
-	// TODO: Register actual tools
 	h.logger.Info().Msg("Registering MCP tools")
-	
-	// For now, we'll register a simple ping tool
+
+	// Register ping tool for testing
 	h.tools["ping"] = &PingTool{logger: h.logger}
-	
-	h.logger.Info().Int("count", len(h.tools)).Msg("Tools registered successfully")
+
+	// Register Fly.io management tools
+	h.tools["fly_list_apps"] = tools.NewListAppsTool(h.flyClient, h.authManager, h.logger)
+	h.tools["fly_app_info"] = tools.NewAppInfoTool(h.flyClient, h.authManager, h.logger)
+	h.tools["fly_status"] = tools.NewAppStatusTool(h.flyClient, h.authManager, h.logger)
+	h.tools["fly_restart"] = tools.NewAppRestartTool(h.flyClient, h.authManager, h.logger)
+
+	h.logger.Info().
+		Int("total_tools", len(h.tools)).
+		Strs("tool_names", h.getToolNames()).
+		Msg("Tools registered successfully")
+
 	return nil
+}
+
+// getToolNames returns a slice of registered tool names for logging
+func (h *Handler) getToolNames() []string {
+	names := make([]string, 0, len(h.tools))
+	for name := range h.tools {
+		names = append(names, name)
+	}
+	return names
 }
 
 // sendResponse sends a successful MCP response
